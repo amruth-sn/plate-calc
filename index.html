@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Barbell Plate Calculator</title>
+  <style>
+    body {
+      background-color: #fffdd0;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    .container {
+      max-width: 500px;
+      margin: auto;
+    }
+    h1, h2, h3 {
+      text-align: center;
+    }
+    label, input, button {
+      display: block;
+      width: 100%;
+      margin: 10px 0;
+      font-size: 1em;
+    }
+    .toggle, .mode-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .result {
+      background: #f0f0f0;
+      padding: 10px;
+      margin-top: 20px;
+    }
+    /* For the infinite plate checkboxes, place checkbox + label side by side */
+    .plateOptionRow {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-bottom: 5px; /* small space between rows */
+    }
+    /* For finite plate entries (weight + count + remove button) */
+    .finitePlateRow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 5px;
+    }
+    /* Make readOnly inputs clearly visible */
+    .finitePlateRow input[readonly] {
+      color: #000;
+      background-color: #fafafa;
+      border: 1px solid #ccc;
+    }
+    .custom-plate, .custom-finite-plate {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>❚███═══════════════███❚</h1>
+    <h1>Barbell Plate Calculator</h1>
+    
+    <!-- Mode Toggle -->
+    <div class="mode-toggle">
+      <input type="radio" name="mode" id="modeInfinite" value="infinite" checked onclick="toggleMode()">
+      <label for="modeInfinite">Infinite Plates</label>
+      <input type="radio" name="mode" id="modeFinite" value="finite" onclick="toggleMode()">
+      <label for="modeFinite">Finite Plates (Home Gym)</label>
+    </div>
+    
+    <!-- Global Unit Toggle -->
+    <div class="toggle">
+      <input type="checkbox" id="unitToggle" onchange="updateInfiniteUnitLabels(); updateFiniteUnitLabels();" />
+      <label for="unitToggle">Use Kilograms (kg) instead of Pounds (lbs)</label>
+    </div>
+    
+    <!-- INFINITE SECTION -->
+    <div id="infiniteSection">
+      <h2>Infinite Plates Calculator</h2>
+      <label for="totalWeightInf">Total Weight (lbs):</label>
+      <input type="number" id="totalWeightInf" min="5" max="1200" step="5" value="225" />
+      
+      <label for="barWeightInf">Bar Weight (lbs):</label>
+      <input type="number" id="barWeightInf" step="1" value="45" />
+      
+      <h3>Select Available Plates</h3>
+      <div id="plateOptionsContainerInf"></div>
+      
+      <!-- Add custom plate in infinite mode -->
+      <div class="custom-plate">
+        <input type="number" id="customPlateInput" placeholder="Custom plate weight" step="any" />
+        <button type="button" onclick="addCustomPlate()">Add Plate</button>
+      </div>
+      
+      <button onclick="calculateInfinite()">Calculate</button>
+      <div class="result" id="resultInfinite"></div>
+    </div>
+    
+    <!-- FINITE SECTION -->
+    <div id="finiteSection" style="display:none;">
+      <h2>Finite Plates Calculator</h2>
+      <label for="totalWeightFin">Total Weight (lbs):</label>
+      <input type="number" id="totalWeightFin" min="5" max="1200" step="5" value="225" />
+      
+      <label for="barWeightFin">Bar Weight (lbs):</label>
+      <input type="number" id="barWeightFin" step="1" value="45" />
+      
+      <h3>Enter Your Available Plates</h3>
+      <div id="finitePlatesContainer"></div>
+      
+      <!-- Add custom plate in finite mode -->
+      <div class="custom-finite-plate">
+        <input type="number" id="customFinitePlateWeight" placeholder="Plate weight" step="any" />
+        <input type="number" id="customFinitePlateCount" placeholder="Count" step="1" min="1" />
+        <button type="button" onclick="addFinitePlate()">Add Plate</button>
+      </div>
+      
+      <button onclick="calculateFinite()">Calculate</button>
+      <div class="result" id="resultFinite"></div>
+    </div>
+  </div>
+  
+  <script>
+    // Global arrays for custom plates in infinite section
+    let customLbsPlates = [];
+    let customKgPlates = [];
+    
+    // Toggle between infinite and finite sections
+    function toggleMode() {
+      if (document.getElementById('modeInfinite').checked) {
+         document.getElementById('infiniteSection').style.display = 'block';
+         document.getElementById('finiteSection').style.display = 'none';
+      } else {
+         document.getElementById('infiniteSection').style.display = 'none';
+         document.getElementById('finiteSection').style.display = 'block';
+      }
+    }
+    
+    // --- INFINITE SECTION FUNCTIONS ---
+    
+    function updateInfiniteUnitLabels() {
+      const useKg = document.getElementById('unitToggle').checked;
+      const totalWeightInfLabel = document.querySelector('label[for="totalWeightInf"]');
+      const barWeightInfLabel   = document.querySelector('label[for="barWeightInf"]');
+      const totalWeightInfInput = document.getElementById('totalWeightInf');
+      const barWeightInfInput   = document.getElementById('barWeightInf');
+      
+      if (useKg) {
+        totalWeightInfLabel.textContent = 'Total Weight (kg):';
+        barWeightInfLabel.textContent   = 'Bar Weight (kg):';
+        totalWeightInfInput.min  = 5;
+        totalWeightInfInput.max  = 544; // ~1200 lbs
+        totalWeightInfInput.step = 0.5;
+        barWeightInfInput.step   = 0.5;
+        if (totalWeightInfInput.value === "225") { totalWeightInfInput.value = 100; }
+        if (barWeightInfInput.value === "45")    { barWeightInfInput.value = 20; }
+      } else {
+        totalWeightInfLabel.textContent = 'Total Weight (lbs):';
+        barWeightInfLabel.textContent   = 'Bar Weight (lbs):';
+        totalWeightInfInput.min  = 5;
+        totalWeightInfInput.max  = 1200;
+        totalWeightInfInput.step = 5;
+        barWeightInfInput.step   = 1;
+        if (totalWeightInfInput.value === "100") { totalWeightInfInput.value = 225; }
+        if (barWeightInfInput.value === "20")    { barWeightInfInput.value = 45; }
+      }
+      updateInfinitePlateOptions();
+    }
+    
+    // Build the available plate options (with defaults, extras, and custom additions) for infinite mode
+    function updateInfinitePlateOptions() {
+      const useKg = document.getElementById('unitToggle').checked;
+      const container = document.getElementById('plateOptionsContainerInf');
+      container.innerHTML = ''; // Clear previous entries
+      
+      let defaultPlates, extraPlates, customPlates;
+      if (useKg) {
+        defaultPlates = [20, 10, 5, 2.5, 1.25];
+        extraPlates   = []; // no extras for kg mode
+        customPlates  = customKgPlates;
+      } else {
+        defaultPlates = [45, 25, 10, 5, 2.5];
+        extraPlates   = [35, 15];
+        customPlates  = customLbsPlates;
+      }
+      
+      let plateSet = new Set();
+      let plates   = [];
+      
+      defaultPlates.forEach(p => {
+        if (!plateSet.has(p)) {
+          plates.push({ weight: p, checked: true });
+          plateSet.add(p);
+        }
+      });
+      extraPlates.forEach(p => {
+        if (!plateSet.has(p)) {
+          plates.push({ weight: p, checked: false });
+          plateSet.add(p);
+        }
+      });
+      customPlates.forEach(p => {
+        if (!plateSet.has(p)) {
+          plates.push({ weight: p, checked: true });
+          plateSet.add(p);
+        }
+      });
+      
+      // Sort descending
+      plates.sort((a, b) => b.weight - a.weight);
+      
+      plates.forEach(plate => {
+        const checkbox = document.createElement('input');
+        checkbox.type  = 'checkbox';
+        checkbox.className = 'plate-checkbox';
+        checkbox.value = plate.weight;
+        checkbox.id    = 'plate-' + plate.weight;
+        checkbox.checked = plate.checked;
+        
+        const label = document.createElement('label');
+        label.htmlFor = checkbox.id;
+        label.textContent = plate.weight + (useKg ? ' kg' : ' lb');
+        
+        // Use a flex row for alignment
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'plateOptionRow';
+        rowDiv.appendChild(checkbox);
+        rowDiv.appendChild(label);
+        
+        container.appendChild(rowDiv);
+      });
+    }
+    
+    // Add a custom plate weight in infinite mode.
+    function addCustomPlate() {
+      const useKg = document.getElementById('unitToggle').checked;
+      const input = document.getElementById('customPlateInput');
+      let plateVal = parseFloat(input.value);
+      if (isNaN(plateVal) || plateVal <= 0) {
+        alert("Please enter a positive number for the plate weight.");
+        return;
+      }
+      if (useKg) {
+        if (!customKgPlates.includes(plateVal)) {
+          customKgPlates.push(plateVal);
+        }
+      } else {
+        if (!customLbsPlates.includes(plateVal)) {
+          customLbsPlates.push(plateVal);
+        }
+      }
+      input.value = '';
+      updateInfinitePlateOptions();
+    }
+    
+    // Use a greedy algorithm to choose plates for infinite mode.
+    function calculateInfinite() {
+      const useKg = document.getElementById('unitToggle').checked;
+      let totalWeight = parseFloat(document.getElementById('totalWeightInf').value);
+      let barWeight   = parseFloat(document.getElementById('barWeightInf').value);
+      
+      if (totalWeight <= barWeight) {
+        document.getElementById('resultInfinite').innerHTML = 'Total weight must be greater than the bar weight.';
+        return;
+      }
+      
+      // Gather selected plate options
+      const checkboxes = document.querySelectorAll('#plateOptionsContainerInf .plate-checkbox');
+      let plateOptions = [];
+      checkboxes.forEach(checkbox => {
+        if (checkbox.checked) {
+          let value = parseFloat(checkbox.value);
+          if (!isNaN(value)) plateOptions.push(value);
+        }
+      });
+      
+      if (plateOptions.length === 0) {
+        document.getElementById('resultInfinite').innerHTML = 'Please select at least one plate option.';
+        return;
+      }
+      
+      plateOptions.sort((a, b) => b - a);
+      
+      let weightToLoad = totalWeight - barWeight;
+      let weightPerSide = weightToLoad / 2;
+      
+      let remaining = weightPerSide;
+      let platesUsed = {};
+      for (let plate of plateOptions) {
+        let count = Math.floor(remaining / plate);
+        if (count > 0) {
+          platesUsed[plate] = count;
+          remaining = (remaining - (plate * count)).toFixed(5);
+          remaining = parseFloat(remaining);
+        }
+      }
+      
+      if (remaining > 0.001) {
+        document.getElementById('resultInfinite').innerHTML = 'The weight cannot be exactly matched with the available plates.';
+        return;
+      }
+      
+      let unitLabel = useKg ? 'kg' : 'lb';
+      let resultHTML = `<h3>Plates per Side</h3>`;
+      for (let plate of plateOptions) {
+        if (platesUsed[plate]) {
+          resultHTML += `<p>${platesUsed[plate]} x ${plate}${unitLabel}</p>`;
+        }
+      }
+      resultHTML += `<h3>Total Plates on Barbell</h3>`;
+      for (let plate of plateOptions) {
+        if (platesUsed[plate]) {
+          resultHTML += `<p>${platesUsed[plate] * 2} x ${plate}${unitLabel}</p>`;
+        }
+      }
+      
+      document.getElementById('resultInfinite').innerHTML = resultHTML;
+    }
+    
+    // --- FINITE SECTION FUNCTIONS ---
+    
+    function updateFiniteUnitLabels() {
+      const useKg = document.getElementById('unitToggle').checked;
+      const totalWeightFinLabel = document.querySelector('label[for="totalWeightFin"]');
+      const barWeightFinLabel   = document.querySelector('label[for="barWeightFin"]');
+      const totalWeightFinInput = document.getElementById('totalWeightFin');
+      const barWeightFinInput   = document.getElementById('barWeightFin');
+      
+      if (useKg) {
+        totalWeightFinLabel.textContent = 'Total Weight (kg):';
+        barWeightFinLabel.textContent   = 'Bar Weight (kg):';
+        totalWeightFinInput.min  = 5;
+        totalWeightFinInput.max  = 544;
+        totalWeightFinInput.step = 0.5;
+        barWeightFinInput.step   = 0.5;
+        if (totalWeightFinInput.value === "225") { totalWeightFinInput.value = 100; }
+        if (barWeightFinInput.value === "45")    { barWeightFinInput.value = 20; }
+      } else {
+        totalWeightFinLabel.textContent = 'Total Weight (lbs):';
+        barWeightFinLabel.textContent   = 'Bar Weight (lbs):';
+        totalWeightFinInput.min  = 5;
+        totalWeightFinInput.max  = 1200;
+        totalWeightFinInput.step = 5;
+        barWeightFinInput.step   = 1;
+        if (totalWeightFinInput.value === "100") { totalWeightFinInput.value = 225; }
+        if (barWeightFinInput.value === "20")    { barWeightFinInput.value = 45; }
+      }
+    }
+    
+    // Add a plate entry (weight and count) to the finite section.
+    function addFinitePlate() {
+      const weightInput = document.getElementById('customFinitePlateWeight');
+      const countInput  = document.getElementById('customFinitePlateCount');
+      let weight = parseFloat(weightInput.value);
+      let count  = parseInt(countInput.value, 10);
+      
+      if (isNaN(weight) || weight <= 0) {
+        alert("Please enter a positive number for the plate weight.");
+        return;
+      }
+      if (isNaN(count) || count <= 0) {
+        alert("Please enter a positive integer for the plate count.");
+        return;
+      }
+      
+      const container = document.getElementById('finitePlatesContainer');
+      
+      // Create a row for the plate entry
+      const row = document.createElement('div');
+      row.className = 'finitePlateRow';
+      
+      // We use readOnly instead of disabled so the text is clearly visible
+      const weightField = document.createElement('input');
+      weightField.type = 'number';
+      weightField.value = weight;
+      weightField.step = "any";
+      weightField.readOnly = true;
+      
+      const countField = document.createElement('input');
+      countField.type = 'number';
+      countField.value = count;
+      countField.step = "1";
+      countField.min = "1";
+      countField.readOnly = true;
+      
+      const removeBtn = document.createElement('button');
+      removeBtn.textContent = "Remove";
+      removeBtn.onclick = function() {
+        container.removeChild(row);
+      };
+      
+      row.appendChild(weightField);
+      row.appendChild(countField);
+      row.appendChild(removeBtn);
+      container.appendChild(row);
+      
+      // Clear inputs
+      weightInput.value = '';
+      countInput.value = '';
+    }
+    
+    // Recursive backtracking with memoization to minimize plate usage in finite mode
+    function calculateFinite() {
+      const useKg = document.getElementById('unitToggle').checked;
+      let totalWeight = parseFloat(document.getElementById('totalWeightFin').value);
+      let barWeight   = parseFloat(document.getElementById('barWeightFin').value);
+      
+      if (totalWeight <= barWeight) {
+        document.getElementById('resultFinite').innerHTML = 'Total weight must be greater than the bar weight.';
+        return;
+      }
+      
+      let weightToLoad  = totalWeight - barWeight;
+      let weightPerSide = weightToLoad / 2;
+      
+      // Gather user plates from the finitePlatesContainer
+      const container = document.getElementById('finitePlatesContainer');
+      const rows = container.getElementsByClassName('finitePlateRow');
+      let plates = [];
+      for (let row of rows) {
+        const inputs = row.getElementsByTagName('input');
+        let plateWeight = parseFloat(inputs[0].value);
+        let plateCount  = parseInt(inputs[1].value, 10);
+        // Only complete pairs matter
+        let pairsAvailable = Math.floor(plateCount / 2);
+        if (pairsAvailable > 0) {
+          plates.push({ weight: plateWeight, count: pairsAvailable });
+        }
+      }
+      
+      // Check if the total available weight (per side) is enough
+      let totalAvailable = plates.reduce((sum, plate) => sum + (plate.weight * plate.count), 0);
+      if (totalAvailable < weightPerSide - 0.001) {
+        document.getElementById('resultFinite').innerHTML = 'Insufficient total plate weight available to reach the desired load.';
+        return;
+      }
+      
+      // Sort descending
+      plates.sort((a, b) => b.weight - a.weight);
+      
+      // Recursive function with memo
+      const memo = {};
+      function solveFinite(target, index) {
+        target = parseFloat(target.toFixed(3));
+        if (target < 0.001) return {comb: {}, count: 0};
+        if (index >= plates.length) return null;
+        let key = index + '-' + target.toFixed(3);
+        if (memo[key] !== undefined) return memo[key];
+        
+        let best = null;
+        let plate = plates[index];
+        for (let use = 0; use <= plate.count; use++) {
+          let weightUsed = use * plate.weight;
+          if (weightUsed > target + 0.001) break;
+          
+          let remainder = target - weightUsed;
+          let result = solveFinite(remainder, index + 1);
+          if (result !== null) {
+            // Found a valid combination
+            let combination = Object.assign({}, result.comb);
+            if (use > 0) {
+              combination[plate.weight] = use;
+            }
+            let totalCount = use + result.count;
+            if (best === null || totalCount < best.count) {
+              best = { comb: combination, count: totalCount };
+            }
+          }
+        }
+        memo[key] = best;
+        return best;
+      }
+      
+      let solution = solveFinite(weightPerSide, 0);
+      if (solution === null) {
+        document.getElementById('resultFinite').innerHTML = 'No combination of available plates can match the desired weight.';
+        return;
+      }
+      
+      let unitLabel = useKg ? 'kg' : 'lb';
+      let resultHTML = `<h3>Plates per Side</h3>`;
+      for (let weight in solution.comb) {
+        resultHTML += `<p>${solution.comb[weight]} x ${weight}${unitLabel}</p>`;
+      }
+      resultHTML += `<h3>Total Plates on Barbell</h3>`;
+      for (let weight in solution.comb) {
+        resultHTML += `<p>${solution.comb[weight] * 2} x ${weight}${unitLabel}</p>`;
+      }
+      
+      document.getElementById('resultFinite').innerHTML = resultHTML;
+    }
+    
+    // Initialize on load
+    updateInfiniteUnitLabels();
+    updateFiniteUnitLabels();
+  </script>
+</body>
+</html>
